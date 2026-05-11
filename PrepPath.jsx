@@ -6,6 +6,8 @@ import {
   ChevronDown, ChevronUp, Plus, Target
 } from 'lucide-react';
 
+const API_BASE = 'http://localhost:8000';
+
 export default function PrepPath() {
   const [page, setPage] = useState('landing');
   const [a11yOpen, setA11yOpen] = useState(false);
@@ -14,6 +16,12 @@ export default function PrepPath() {
   const [dyslexiaFont, setDyslexiaFont] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [textSize, setTextSize] = useState(16);
+
+  // Shared AI-generated state
+  const [roadmapData, setRoadmapData] = useState(null);   // from /api/analyze
+  const [transcript, setTranscript] = useState('');        // typed answer in Practice
+  const [feedbackData, setFeedbackData] = useState(null);  // from /api/feedback
+  const [currentQIdx, setCurrentQIdx] = useState(0);       // which question is active
 
   // Editorial theme tokens — warm cream by default, true black/white in HC mode
   const theme = highContrast ? {
@@ -96,12 +104,43 @@ export default function PrepPath() {
 
       <main style={{ position: 'relative', zIndex: 2 }}>
         {page === 'landing' && <Landing theme={theme} mono={mono} setPage={setPage} />}
-        {page === 'onboarding' && <Onboarding theme={theme} mono={mono} setPage={setPage} />}
-        {page === 'dashboard' && <Dashboard theme={theme} mono={mono} setPage={setPage} />}
-        {page === 'roadmap' && <Roadmap theme={theme} mono={mono} setPage={setPage} />}
+        {page === 'onboarding' && (
+          <Onboarding
+            theme={theme} mono={mono} setPage={setPage}
+            setRoadmapData={setRoadmapData}
+          />
+        )}
+        {page === 'dashboard' && (
+          <Dashboard
+            theme={theme} mono={mono} setPage={setPage}
+            roadmapData={roadmapData}
+          />
+        )}
+        {page === 'roadmap' && (
+          <Roadmap
+            theme={theme} mono={mono} setPage={setPage}
+            roadmapData={roadmapData}
+          />
+        )}
         {page === 'calendar' && <CalendarSync theme={theme} mono={mono} setPage={setPage} />}
-        {page === 'practice' && <Practice theme={theme} mono={mono} setPage={setPage} />}
-        {page === 'feedback' && <Feedback theme={theme} mono={mono} setPage={setPage} />}
+        {page === 'practice' && (
+          <Practice
+            theme={theme} mono={mono} setPage={setPage}
+            roadmapData={roadmapData}
+            currentQIdx={currentQIdx} setCurrentQIdx={setCurrentQIdx}
+            transcript={transcript} setTranscript={setTranscript}
+            setFeedbackData={setFeedbackData}
+          />
+        )}
+        {page === 'feedback' && (
+          <Feedback
+            theme={theme} mono={mono} setPage={setPage}
+            roadmapData={roadmapData}
+            currentQIdx={currentQIdx}
+            transcript={transcript}
+            feedbackData={feedbackData} setFeedbackData={setFeedbackData}
+          />
+        )}
       </main>
     </div>
   );
@@ -320,19 +359,54 @@ function Landing({ theme, mono, setPage }) {
 }
 
 /* ---------- ONBOARDING ---------- */
-function Onboarding({ theme, mono, setPage }) {
+function Onboarding({ theme, mono, setPage, setRoadmapData }) {
   const [loading, setLoading] = useState(false);
   const [loadStep, setLoadStep] = useState(0);
-  const [cvUploaded, setCvUploaded] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [cvFile, setCvFile] = useState(null);
+  const [cvText, setCvText] = useState('');
   const [jdText, setJdText] = useState('');
   const [date, setDate] = useState('');
 
-  const handleAnalyse = () => {
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCvFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setCvText(ev.target.result);
+    reader.readAsText(file);
+  };
+
+  const handleAnalyse = async () => {
     setLoading(true);
-    [1, 2, 3, 4].forEach((s, i) => {
-      setTimeout(() => setLoadStep(s), (i + 1) * 700);
-    });
-    setTimeout(() => setPage('roadmap'), 3500);
+    setLoadError('');
+
+    // Animate steps 1-3 while waiting for the API
+    const stepTimers = [1, 2, 3].map((s, i) =>
+      setTimeout(() => setLoadStep(s), (i + 1) * 700)
+    );
+
+    try {
+      const res = await fetch(`${API_BASE}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cv_text: cvText || '(CV text unavailable — binary file)',
+          job_description: jdText,
+          interview_date: date,
+        }),
+      });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json();
+      setRoadmapData(data);
+      setLoadStep(4);
+      setTimeout(() => setPage('roadmap'), 600);
+    } catch (err) {
+      stepTimers.forEach(clearTimeout);
+      setLoadError(`Could not reach the API: ${err.message}. Check that main.py is running on port 8000.`);
+      setLoading(false);
+      setLoadStep(0);
+    }
   };
 
   if (loading) {
@@ -358,7 +432,7 @@ function Onboarding({ theme, mono, setPage }) {
             </div>
           ))}
         </div>
-        <p className="mono" style={{ color: theme.inkFaint, marginTop: 32, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>This takes about 15 seconds</p>
+            <p className="mono" style={{ color: theme.inkFaint, marginTop: 32, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Analysing with AI — hang tight</p>
       </div>
     );
   }
@@ -387,26 +461,31 @@ function Onboarding({ theme, mono, setPage }) {
             <FileText size={18} />
             <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>01 — Your CV</span>
           </div>
-          <button onClick={() => setCvUploaded(!cvUploaded)} style={{
-            width: '100%', padding: 36,
-            border: `2px dashed ${cvUploaded ? theme.success : theme.rule}`,
-            background: cvUploaded ? `${theme.success}10` : 'transparent',
+          <label style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+            width: '100%', padding: 36, cursor: 'pointer',
+            border: `2px dashed ${cvFile ? theme.success : theme.rule}`,
+            background: cvFile ? `${theme.success}10` : 'transparent',
           }}>
-            {cvUploaded ? (
+            <input
+              type="file" accept=".pdf,.docx,.doc,.txt"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+            {cvFile ? (
               <>
                 <CheckCircle2 size={28} color={theme.success} />
-                <span style={{ fontWeight: 600 }}>DanielThompson_CV.pdf</span>
-                <span className="mono" style={{ fontSize: 10, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Click to remove</span>
+                <span style={{ fontWeight: 600 }}>{cvFile.name}</span>
+                <span className="mono" style={{ fontSize: 10, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Click to replace</span>
               </>
             ) : (
               <>
                 <Upload size={26} color={theme.inkFaint} />
                 <span className="serif" style={{ fontSize: 18, fontStyle: 'italic' }}>Drop your CV here</span>
-                <span className="mono" style={{ fontSize: 10, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>PDF or DOCX · Max 5MB</span>
+                <span className="mono" style={{ fontSize: 10, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>PDF · DOCX · TXT · Max 5MB</span>
               </>
             )}
-          </button>
+          </label>
         </div>
 
         <div style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 28 }}>
@@ -444,14 +523,19 @@ function Onboarding({ theme, mono, setPage }) {
         )}
       </div>
 
+      {loadError && (
+        <div style={{ marginBottom: 16, padding: '14px 18px', background: `${theme.error}15`, borderLeft: `3px solid ${theme.error}`, fontSize: 14, color: theme.error }}>
+          {loadError}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button onClick={handleAnalyse} disabled={!cvUploaded || !jdText} style={{
+        <button onClick={handleAnalyse} disabled={!cvFile || !jdText} style={{
           padding: '18px 32px',
-          background: (cvUploaded && jdText) ? theme.ink : theme.inkFaint,
+          background: (cvFile && jdText) ? theme.ink : theme.inkFaint,
           color: theme.bg, fontWeight: 500, fontSize: 15, letterSpacing: '0.02em',
-          opacity: (cvUploaded && jdText) ? 1 : 0.5,
+          opacity: (cvFile && jdText) ? 1 : 0.5,
           display: 'flex', alignItems: 'center', gap: 8,
-          cursor: (cvUploaded && jdText) ? 'pointer' : 'not-allowed',
+          cursor: (cvFile && jdText) ? 'pointer' : 'not-allowed',
         }}>
           Analyse & build my plan <ChevronRight size={18} />
         </button>
@@ -461,18 +545,24 @@ function Onboarding({ theme, mono, setPage }) {
 }
 
 /* ---------- DASHBOARD ---------- */
-function Dashboard({ theme, mono, setPage }) {
+function Dashboard({ theme, mono, setPage, roadmapData }) {
+  const name = roadmapData?.candidate_name || 'Daniel';
+  const role = roadmapData?.role || 'Spotify';
+  const company = roadmapData?.company || 'Spotify';
   return (
     <div style={{ padding: '48px 40px', maxWidth: 1240, margin: '0 auto' }} className="fade-up">
       <div style={{ borderBottom: `1px solid ${theme.rule}`, paddingBottom: 32, marginBottom: 40 }}>
         <div className="mono" style={{ fontSize: 11, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>
-          The Dashboard · Welcome back, Daniel
+          The Dashboard · Welcome back, {name}
         </div>
         <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, margin: 0, lineHeight: 0.98, letterSpacing: '-0.03em' }}>
           You're <em>58%</em> there.
         </h1>
         <p style={{ fontSize: 17, color: theme.inkSoft, marginTop: 16, maxWidth: 540 }}>
-          Eleven days until your Spotify interview. Keep the momentum.
+          {roadmapData
+            ? `${roadmapData.days_to_interview} days until your ${company} interview. Keep the momentum.`
+            : `Eleven days until your ${company} interview. Keep the momentum.`
+          }
         </p>
       </div>
 
@@ -592,18 +682,8 @@ function Dashboard({ theme, mono, setPage }) {
 }
 
 /* ---------- ROADMAP ---------- */
-function Roadmap({ theme, mono, setPage }) {
-  const [tasks, setTasks] = useState({
-    'w1-1': true, 'w1-2': true, 'w1-3': false,
-    'w2-1': false, 'w2-2': false, 'w2-3': false,
-    'w3-1': false, 'w3-2': false,
-  });
-  const toggle = (id) => setTasks(t => ({ ...t, [id]: !t[id] }));
-  const total = Object.keys(tasks).length;
-  const done = Object.values(tasks).filter(Boolean).length;
-  const pct = Math.round((done / total) * 100);
-
-  const weeks = [
+function Roadmap({ theme, mono, setPage, roadmapData }) {
+  const defaultWeeks = [
     { num: 1, label: 'Foundation', tasks: [
       { id: 'w1-1', title: 'Research Spotify product principles', type: 'Research', time: '30m' },
       { id: 'w1-2', title: 'Review your past projects for STAR stories', type: 'Practice', time: '45m' },
@@ -620,15 +700,48 @@ function Roadmap({ theme, mono, setPage }) {
     ]},
   ];
 
+  const weeks = roadmapData?.weeks || defaultWeeks;
+
+  // Build initial task state from whichever week data we have
+  const initialTasks = {};
+  weeks.forEach((w, wi) => w.tasks.forEach((t, ti) => {
+    initialTasks[t.id] = wi === 0 && ti < 2; // first two tasks of week 1 pre-checked
+  }));
+
+  const [tasks, setTasks] = useState(initialTasks);
+  const toggle = (id) => setTasks(t => ({ ...t, [id]: !t[id] }));
+  const total = Object.keys(tasks).length;
+  const done = Object.values(tasks).filter(Boolean).length;
+  const pct = Math.round((done / total) * 100);
+
+  const focusAreas = roadmapData?.focus_areas || [
+    { num: '01', title: 'Behavioural questions', priority: 'High' },
+    { num: '02', title: 'Data literacy', priority: 'Medium' },
+    { num: '03', title: 'Stakeholder management', priority: 'Low' },
+  ];
+
+  const skillGaps = roadmapData?.skill_gaps || [
+    { skill: 'Product strategy', match: 85 },
+    { skill: 'User research', match: 72 },
+    { skill: 'Data analytics', match: 45 },
+    { skill: 'Stakeholder management', match: 68 },
+    { skill: 'Roadmapping', match: 38 },
+  ];
+
+  const role = roadmapData ? `${roadmapData.company} · ${roadmapData.role}` : 'Spotify · Product Manager';
+  const daysLabel = roadmapData?.days_to_interview
+    ? `${roadmapData.days_to_interview} days.`
+    : 'Eleven days.';
+
   return (
     <div style={{ padding: '48px 40px', maxWidth: 1240, margin: '0 auto' }} className="fade-up">
       <div style={{ borderBottom: `1px solid ${theme.rule}`, paddingBottom: 28, marginBottom: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <div className="mono" style={{ fontSize: 11, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>
-            The Roadmap · Spotify · Product Manager
+            The Roadmap · {role}
           </div>
           <h1 className="serif" style={{ fontSize: 56, fontWeight: 500, margin: 0, lineHeight: 1, letterSpacing: '-0.03em' }}>
-            Eleven days. <em style={{ color: theme.accent }}>Three weeks.</em>
+            {daysLabel} <em style={{ color: theme.accent }}>Three weeks.</em>
           </h1>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -642,21 +755,19 @@ function Roadmap({ theme, mono, setPage }) {
         Three areas to focus on
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 48 }}>
-        {[
-          { num: '01', title: 'Behavioural questions', priority: 'High', color: theme.error },
-          { num: '02', title: 'Data literacy', priority: 'Medium', color: theme.warning },
-          { num: '03', title: 'Stakeholder management', priority: 'Low', color: theme.success },
-        ].map((f, i) => (
+        {focusAreas.map((f, i) => {
+          const color = f.priority === 'High' ? theme.error : f.priority === 'Medium' ? theme.warning : theme.success;
+          return (
           <div key={i} className="card-hover" style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
               <span className="mono" style={{ fontSize: 11, color: theme.accent }}>{f.num}</span>
-              <span className="mono" style={{ fontSize: 10, padding: '3px 8px', background: f.color, color: theme.bg, letterSpacing: '0.08em' }}>
+              <span className="mono" style={{ fontSize: 10, padding: '3px 8px', background: color, color: theme.bg, letterSpacing: '0.08em' }}>
                 {f.priority.toUpperCase()}
               </span>
             </div>
             <h4 className="serif" style={{ margin: 0, fontSize: 24, fontWeight: 500, lineHeight: 1.1 }}>{f.title}</h4>
           </div>
-        ))}
+        ); })}
       </div>
 
       {/* Timeline */}
@@ -701,14 +812,8 @@ function Roadmap({ theme, mono, setPage }) {
         Skill Match
       </div>
       <div style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 28 }}>
-        {[
-          { skill: 'Product strategy', match: 85 },
-          { skill: 'User research', match: 72 },
-          { skill: 'Data analytics', match: 45 },
-          { skill: 'Stakeholder management', match: 68 },
-          { skill: 'Roadmapping', match: 38 },
-        ].map((s, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '200px 1fr 80px', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: i < 4 ? `1px solid ${theme.surfaceAlt}` : 'none' }}>
+        {skillGaps.map((s, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '200px 1fr 80px', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: i < skillGaps.length - 1 ? `1px solid ${theme.surfaceAlt}` : 'none' }}>
             <span className="serif" style={{ fontSize: 17 }}>{s.skill}</span>
             <div style={{ background: theme.surfaceAlt, height: 6 }}>
               <div style={{ width: `${s.match}%`, height: '100%', background: s.match < 50 ? theme.warning : theme.success, transition: 'width 0.4s' }} />
@@ -922,10 +1027,29 @@ function CalendarSync({ theme, mono, setPage }) {
 }
 
 /* ---------- PRACTICE ---------- */
-function Practice({ theme, mono, setPage }) {
+function Practice({ theme, mono, setPage, roadmapData, currentQIdx, setCurrentQIdx, transcript, setTranscript, setFeedbackData }) {
   const [recording, setRecording] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+
+  const defaultQuestions = [
+    'Tell me about a time you had to manage multiple competing priorities. How did you handle it?',
+    'Why are you interested in this role?',
+    'Describe a project you led from start to finish.',
+    'What is your biggest weakness?',
+    'Tell me about a time you influenced without authority.',
+    'How do you prioritise features when resources are limited?',
+    'Describe a time you used data to make a decision.',
+    'Where do you see yourself in five years?',
+  ];
+  const questions = roadmapData?.questions || defaultQuestions;
+  const totalQ = questions.length;
+  const currentQuestion = questions[currentQIdx] || questions[0];
+
+  const handleGetFeedback = async () => {
+    setFeedbackData(null); // clear stale data
+    setPage('feedback');
+  };
 
   useEffect(() => {
     if (!recording) return;
@@ -940,16 +1064,19 @@ function Practice({ theme, mono, setPage }) {
     <div style={{ display: 'grid', gridTemplateColumns: '42% 58%', minHeight: 'calc(100vh - 81px)' }} className="fade-up">
       <div style={{ background: theme.surfaceAlt, padding: '48px 40px', borderRight: `1px solid ${theme.rule}` }}>
         <div className="mono" style={{ fontSize: 11, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>
-          The Practice · Question 03 of 08
+          The Practice · Question {currentQIdx + 1} of {totalQ}
         </div>
-        <span className="mono" style={{
-          display: 'inline-block', padding: '4px 10px',
-          background: theme.ink, color: theme.bg,
-          fontSize: 10, fontWeight: 500, letterSpacing: '0.1em',
-          marginBottom: 20,
-        }}>BEHAVIOURAL</span>
-        <h2 className="serif" style={{ fontSize: 32, fontWeight: 500, lineHeight: 1.2, margin: '0 0 32px', letterSpacing: '-0.02em' }}>
-          "Tell me about a time you had to manage <em>multiple competing priorities</em>. How did you handle it?"
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <span className="mono" style={{
+            display: 'inline-block', padding: '4px 10px',
+            background: theme.ink, color: theme.bg,
+            fontSize: 10, fontWeight: 500, letterSpacing: '0.1em',
+          }}>BEHAVIOURAL</span>
+          <button onClick={() => setCurrentQIdx(i => Math.max(0, i - 1))} className="mono" disabled={currentQIdx === 0} style={{ padding: '4px 10px', border: `1px solid ${theme.rule}`, fontSize: 10, opacity: currentQIdx === 0 ? 0.3 : 1 }}>◀ PREV</button>
+          <button onClick={() => setCurrentQIdx(i => Math.min(totalQ - 1, i + 1))} className="mono" disabled={currentQIdx === totalQ - 1} style={{ padding: '4px 10px', border: `1px solid ${theme.rule}`, fontSize: 10, opacity: currentQIdx === totalQ - 1 ? 0.3 : 1 }}>NEXT ▶</button>
+        </div>
+        <h2 className="serif" style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.2, margin: '0 0 32px', letterSpacing: '-0.02em' }}>
+          "{currentQuestion}"
         </h2>
 
         <button onClick={() => setTipOpen(!tipOpen)} style={{
@@ -986,7 +1113,8 @@ function Practice({ theme, mono, setPage }) {
         </div>
       </div>
 
-      <div style={{ padding: '48px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ padding: '48px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* Mock camera preview */}
         <div style={{
           width: '100%', maxWidth: 480, aspectRatio: '16/10',
           background: theme.ink,
@@ -1019,40 +1147,59 @@ function Practice({ theme, mono, setPage }) {
           )}
         </div>
 
-        <div className="serif" style={{ marginTop: 32, fontSize: 72, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: recording ? theme.accent : theme.ink, lineHeight: 1 }}>
+        <div className="serif" style={{ marginTop: 24, fontSize: 64, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: recording ? theme.accent : theme.ink, lineHeight: 1 }}>
           {mm}:{ss}
         </div>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
-          <button onClick={() => setRecording(!recording)} style={{
-            padding: '16px 28px',
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button onClick={() => { setRecording(!recording); }} style={{
+            padding: '14px 24px',
             background: recording ? theme.ink : theme.accent, color: theme.bg,
             fontWeight: 500, fontSize: 14, letterSpacing: '0.05em',
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            {recording ? <><Pause size={16} /> STOP RECORDING</> : <><Mic size={16} /> START RECORDING</>}
+            {recording ? <><Pause size={16} /> STOP</> : <><Mic size={16} /> START RECORDING</>}
           </button>
           {elapsed > 0 && !recording && (
-            <>
-              <button onClick={() => setElapsed(0)} className="mono" style={{
-                padding: '16px 20px', border: `1px solid ${theme.rule}`,
-                fontWeight: 500, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <RotateCcw size={14} /> Re-record
-              </button>
-              <button onClick={() => setPage('feedback')} style={{
-                padding: '16px 24px', background: theme.ink, color: theme.bg,
-                fontWeight: 500, fontSize: 14, letterSpacing: '0.05em',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                GET FEEDBACK <ChevronRight size={16} />
-              </button>
-            </>
+            <button onClick={() => { setElapsed(0); setTranscript(''); }} className="mono" style={{
+              padding: '14px 18px', border: `1px solid ${theme.rule}`,
+              fontWeight: 500, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <RotateCcw size={14} /> Re-record
+            </button>
           )}
         </div>
 
-        <p className="mono" style={{ fontSize: 10, color: theme.inkFaint, marginTop: 24, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        {/* Answer textarea — always visible so user can type/paste their answer */}
+        <div style={{ width: '100%', maxWidth: 480, marginTop: 28 }}>
+          <div className="mono" style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: theme.inkFaint, marginBottom: 8 }}>
+            Your answer <span style={{ opacity: 0.6 }}>(type or paste your spoken answer for AI feedback)</span>
+          </div>
+          <textarea
+            value={transcript}
+            onChange={e => setTranscript(e.target.value)}
+            placeholder="Type your answer here…"
+            style={{
+              width: '100%', minHeight: 120, padding: 14,
+              border: `1px solid ${theme.rule}`,
+              background: theme.bg, color: theme.ink, resize: 'vertical',
+              fontFamily: 'inherit', fontSize: 14, lineHeight: 1.6,
+            }}
+          />
+        </div>
+
+        {transcript.trim().length > 10 && (
+          <button onClick={handleGetFeedback} style={{
+            marginTop: 16, padding: '16px 32px', background: theme.ink, color: theme.bg,
+            fontWeight: 500, fontSize: 14, letterSpacing: '0.05em', width: '100%', maxWidth: 480,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            GET AI FEEDBACK <ChevronRight size={16} />
+          </button>
+        )}
+
+        <p className="mono" style={{ fontSize: 10, color: theme.inkFaint, marginTop: 16, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Processed locally · Never stored without consent
         </p>
       </div>
@@ -1061,23 +1208,64 @@ function Practice({ theme, mono, setPage }) {
 }
 
 /* ---------- FEEDBACK ---------- */
-function Feedback({ theme, mono, setPage }) {
+function Feedback({ theme, mono, setPage, roadmapData, currentQIdx, transcript, feedbackData, setFeedbackData }) {
   const [transcriptOpen, setTranscriptOpen] = useState(false);
-  const score = 78;
-  const scoreColor = score > 70 ? theme.success : score > 40 ? theme.warning : theme.error;
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
-  const metrics = [
+  const defaultQuestions = [
+    'Tell me about a time you had to manage multiple competing priorities. How did you handle it?',
+  ];
+  const questions = roadmapData?.questions || defaultQuestions;
+  const currentQuestion = questions[currentQIdx] || questions[0];
+
+  // Fetch feedback from the API when this page loads (if not already fetched)
+  useEffect(() => {
+    if (feedbackData) return; // already have it
+    if (!transcript || transcript.trim().length < 5) return;
+    setLoading(true);
+    setApiError('');
+    fetch(`${API_BASE}/api/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: currentQuestion, transcript }),
+    })
+      .then(r => { if (!r.ok) throw new Error(`Server ${r.status}`); return r.json(); })
+      .then(data => { setFeedbackData(data); setLoading(false); })
+      .catch(err => { setApiError(err.message); setLoading(false); });
+  }, []);
+
+  // Use AI data if available, otherwise fall back to demo values
+  const score = feedbackData?.score ?? 78;
+  const scoreColor = score > 70 ? theme.success : score > 40 ? theme.warning : theme.error;
+  const headline = feedbackData?.headline ?? 'a good answer.';
+
+  const metrics = feedbackData?.metrics ?? [
     { label: 'Content relevance', score: 8 },
     { label: 'Delivery & clarity', score: 7 },
     { label: 'Timing', score: 9 },
     { label: 'Confidence signals', score: 6 },
   ];
 
+  const strengths = feedbackData?.strengths ?? [
+    'You clearly described the situation with relevant context.',
+    'Strong use of specific actions you took.',
+  ];
+
+  const improvements = feedbackData?.improvements ?? [
+    'Quantify the result (e.g. "reduced turnaround by 30%"). Right now it\'s vague.',
+    'Six filler words detected ("um", "like"). Try pausing instead.',
+  ];
+
+  const fillerWords = feedbackData?.filler_words ?? ['um', 'like'];
+  const fillerCount = feedbackData?.filler_count ?? 6;
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '42% 58%', minHeight: 'calc(100vh - 81px)' }} className="fade-up">
+      {/* Left: question + transcript */}
       <div style={{ background: theme.surfaceAlt, padding: '48px 40px', borderRight: `1px solid ${theme.rule}` }}>
         <div className="mono" style={{ fontSize: 11, color: theme.inkFaint, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>
-          The Feedback · Question 03 of 08
+          The Feedback · Question {currentQIdx + 1} of {questions.length}
         </div>
         <span className="mono" style={{
           display: 'inline-block', padding: '4px 10px',
@@ -1086,7 +1274,7 @@ function Feedback({ theme, mono, setPage }) {
           marginBottom: 20,
         }}>BEHAVIOURAL</span>
         <h2 className="serif" style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.3, margin: '0 0 32px', letterSpacing: '-0.02em' }}>
-          "Tell me about a time you had to manage multiple competing priorities. How did you handle it?"
+          "{currentQuestion}"
         </h2>
 
         <button onClick={() => setTranscriptOpen(!transcriptOpen)} style={{
@@ -1099,73 +1287,99 @@ function Feedback({ theme, mono, setPage }) {
         </button>
         {transcriptOpen && (
           <div className="serif" style={{ padding: 20, background: theme.surface, border: `1px solid ${theme.rule}`, borderTop: 'none', fontSize: 16, lineHeight: 1.7, fontStyle: 'italic' }}>
-            "So, <span style={{ background: `${theme.warning}40`, padding: '0 4px', fontStyle: 'normal', fontFamily: mono, fontSize: 13 }}>um</span> during my internship I had three projects running at the same time. <span style={{ background: `${theme.warning}40`, padding: '0 4px', fontStyle: 'normal', fontFamily: mono, fontSize: 13 }}>like</span> the mobile redesign, a stakeholder report, and onboarding documentation. I prioritised based on urgency and impact, and <span style={{ background: `${theme.warning}40`, padding: '0 4px', fontStyle: 'normal', fontFamily: mono, fontSize: 13 }}>um</span> communicated trade-offs to my manager early."
+            {transcript
+              ? `"${transcript}"`
+              : <span style={{ color: theme.inkFaint, fontStyle: 'normal', fontSize: 14 }}>No transcript — go to Practice and type your answer.</span>
+            }
           </div>
         )}
       </div>
 
+      {/* Right: AI feedback */}
       <div style={{ padding: '48px 40px', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 32, marginBottom: 40, borderBottom: `1px solid ${theme.rule}`, paddingBottom: 32 }}>
-          <div className="serif" style={{ fontSize: 144, fontWeight: 600, color: scoreColor, lineHeight: 0.9 }}>
-            {score}
+        {loading && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 20 }}>
+            <div style={{ width: 40, height: 40, border: `3px solid ${theme.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'pulse 1s linear infinite' }} />
+            <p className="mono" style={{ color: theme.inkFaint, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Analysing your answer…</p>
           </div>
-          <div style={{ paddingBottom: 12 }}>
-            <div className="serif" style={{ fontSize: 24, fontStyle: 'italic', color: theme.inkSoft, marginBottom: 4 }}>"a good answer."</div>
-            <div className="mono" style={{ fontSize: 11, color: theme.inkFaint, letterSpacing: '0.1em', textTransform: 'uppercase' }}>A few areas to refine</div>
-          </div>
-        </div>
+        )}
 
-        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.inkFaint, marginBottom: 16 }}>
-          The Metrics
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
-          {metrics.map((m, i) => (
-            <div key={i} style={{
-              display: 'grid', gridTemplateColumns: '180px 1fr 50px',
-              alignItems: 'center', gap: 16, padding: '12px 16px',
-              background: theme.surface, border: `1px solid ${theme.rule}`,
-            }}>
-              <span className="serif" style={{ fontSize: 17 }}>{m.label}</span>
-              <div style={{ background: theme.surfaceAlt, height: 4, overflow: 'hidden' }}>
-                <div style={{ width: `${m.score * 10}%`, height: '100%', background: m.score >= 7 ? theme.success : theme.warning }} />
+        {apiError && (
+          <div style={{ padding: '14px 18px', background: `${theme.error}15`, borderLeft: `3px solid ${theme.error}`, color: theme.error, fontSize: 14, marginBottom: 24 }}>
+            {apiError} — showing demo feedback below.
+          </div>
+        )}
+
+        {!loading && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 32, marginBottom: 40, borderBottom: `1px solid ${theme.rule}`, paddingBottom: 32 }}>
+              <div className="serif" style={{ fontSize: 144, fontWeight: 600, color: scoreColor, lineHeight: 0.9 }}>
+                {score}
               </div>
-              <span className="serif" style={{ fontWeight: 600, fontSize: 22, textAlign: 'right' }}>{m.score}<span className="mono" style={{ fontSize: 11, color: theme.inkFaint }}>/10</span></span>
+              <div style={{ paddingBottom: 12 }}>
+                <div className="serif" style={{ fontSize: 24, fontStyle: 'italic', color: theme.inkSoft, marginBottom: 4 }}>"{headline}"</div>
+                <div className="mono" style={{ fontSize: 11, color: theme.inkFaint, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  {fillerCount > 0 ? `${fillerCount} filler word${fillerCount !== 1 ? 's' : ''} detected` : 'Clean delivery'}
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
 
-        <div style={{ background: `${theme.success}10`, borderLeft: `3px solid ${theme.success}`, padding: 24, marginBottom: 12 }}>
-          <div className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.success, marginBottom: 12, fontWeight: 600 }}>Strengths</div>
-          <ul className="serif" style={{ margin: 0, paddingLeft: 24, lineHeight: 1.7, fontSize: 17 }}>
-            <li>You clearly described the situation with relevant context.</li>
-            <li>Strong use of specific actions you took.</li>
-          </ul>
-        </div>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.inkFaint, marginBottom: 16 }}>
+              The Metrics
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
+              {metrics.map((m, i) => (
+                <div key={i} style={{
+                  display: 'grid', gridTemplateColumns: '180px 1fr 50px',
+                  alignItems: 'center', gap: 16, padding: '12px 16px',
+                  background: theme.surface, border: `1px solid ${theme.rule}`,
+                }}>
+                  <span className="serif" style={{ fontSize: 17 }}>{m.label}</span>
+                  <div style={{ background: theme.surfaceAlt, height: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${m.score * 10}%`, height: '100%', background: m.score >= 7 ? theme.success : theme.warning }} />
+                  </div>
+                  <span className="serif" style={{ fontWeight: 600, fontSize: 22, textAlign: 'right' }}>{m.score}<span className="mono" style={{ fontSize: 11, color: theme.inkFaint }}>/10</span></span>
+                </div>
+              ))}
+            </div>
 
-        <div style={{ background: `${theme.warning}10`, borderLeft: `3px solid ${theme.warning}`, padding: 24, marginBottom: 32 }}>
-          <div className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.warning, marginBottom: 12, fontWeight: 600 }}>Refine</div>
-          <ul className="serif" style={{ margin: 0, paddingLeft: 24, lineHeight: 1.7, fontSize: 17 }}>
-            <li>Quantify the result (e.g. "reduced turnaround by 30%"). Right now it's vague.</li>
-            <li>Six filler words detected ("um", "like"). Try pausing instead.</li>
-          </ul>
-        </div>
+            <div style={{ background: `${theme.success}10`, borderLeft: `3px solid ${theme.success}`, padding: 24, marginBottom: 12 }}>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.success, marginBottom: 12, fontWeight: 600 }}>Strengths</div>
+              <ul className="serif" style={{ margin: 0, paddingLeft: 24, lineHeight: 1.7, fontSize: 17 }}>
+                {strengths.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => setPage('practice')} className="mono" style={{
-            flex: 1, padding: 16, border: `1px solid ${theme.rule}`,
-            fontWeight: 500, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}>
-            <ChevronLeft size={14} /> Try again
-          </button>
-          <button onClick={() => setPage('dashboard')} style={{
-            flex: 1, padding: 16, background: theme.ink, color: theme.bg,
-            fontWeight: 500, fontSize: 13, letterSpacing: '0.05em',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}>
-            SAVE & NEXT <ChevronRight size={14} />
-          </button>
-        </div>
+            <div style={{ background: `${theme.warning}10`, borderLeft: `3px solid ${theme.warning}`, padding: 24, marginBottom: 32 }}>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.warning, marginBottom: 12, fontWeight: 600 }}>Refine</div>
+              <ul className="serif" style={{ margin: 0, paddingLeft: 24, lineHeight: 1.7, fontSize: 17 }}>
+                {improvements.map((s, i) => <li key={i}>{s}</li>)}
+                {fillerWords.length > 0 && (
+                  <li>Filler words detected: {fillerWords.map(w => (
+                    <span key={w} className="mono" style={{ background: `${theme.warning}40`, padding: '0 4px', fontSize: 13, marginRight: 4 }}>{w}</span>
+                  ))}. Try pausing instead.</li>
+                )}
+              </ul>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => setPage('practice')} className="mono" style={{
+                flex: 1, padding: 16, border: `1px solid ${theme.rule}`,
+                fontWeight: 500, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>
+                <ChevronLeft size={14} /> Try again
+              </button>
+              <button onClick={() => setPage('dashboard')} style={{
+                flex: 1, padding: 16, background: theme.ink, color: theme.bg,
+                fontWeight: 500, fontSize: 13, letterSpacing: '0.05em',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>
+                SAVE & NEXT <ChevronRight size={14} />
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
