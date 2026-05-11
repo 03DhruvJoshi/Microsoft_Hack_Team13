@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p 'C:\\\\Users\\\\trija\\\\Documents\\\\projects\\\\MIcroHack\\\\Microsoft_Hack_Team13\\\\deliverable\\\\frontend\\\\src\\\\components')",
+      "Bash(mkdir -p 'C:\\\\Users\\\\trija\\\\Documents\\\\projects\\\\MIcroHack\\\\Microsoft_Hack_Team13\\\\deliverable\\\\backend')",
+      "Bash(cp 'C:\\\\Users\\\\trija\\\\Documents\\\\projects\\\\MIcroHack\\\\Microsoft_Hack_Team13\\\\main.py' 'C:\\\\Users\\\\trija\\\\Documents\\\\projects\\\\MIcroHack\\\\Microsoft_Hack_Team13\\\\deliverable\\\\backend\\\\main.py')",
+      "Bash(cp 'C:\\\\Users\\\\trija\\\\Documents\\\\projects\\\\MIcroHack\\\\Microsoft_Hack_Team13\\\\requirements.txt' 'C:\\\\Users\\\\trija\\\\Documents\\\\projects\\\\MIcroHack\\\\Microsoft_Hack_Team13\\\\deliverable\\\\backend\\\\requirements.txt')",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
