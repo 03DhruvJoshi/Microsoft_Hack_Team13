@@ -115,7 +115,7 @@ export default function Feedback({
         </button>
         {transcriptOpen && (
           <div className="serif" style={{ padding: 20, background: theme.surface, border: `1px solid ${theme.rule}`, borderTop: 'none', fontSize: 16, lineHeight: 1.7, fontStyle: 'italic' }}>
-            {transcript ? `"${transcript}"` : <span style={{ color: theme.inkFaint, fontStyle: 'normal', fontSize: 14 }}>No transcript — go to Practice and record or type your answer.</span>}
+            {transcript ? `"${transcript}"` : <span style={{ color: theme.inkFaint, fontStyle: 'normal', fontSize: 14 }}>No transcript. Go to Practice and record or type your answer.</span>}
           </div>
         )}
 
@@ -164,7 +164,7 @@ export default function Feedback({
 
         {apiError && (
           <div style={{ padding: '14px 18px', background: `${theme.error}15`, borderLeft: `3px solid ${theme.error}`, color: theme.error, fontSize: 14, marginBottom: 24 }}>
-            {apiError} — showing demo feedback below.
+            {apiError}. Showing demo feedback below.
           </div>
         )}
 
