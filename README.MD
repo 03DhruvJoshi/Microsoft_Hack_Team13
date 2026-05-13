@@ -81,15 +81,7 @@ cd deliverable/backend
 copy .env.example .env
 ```
 
-Open `.env` and fill in your own API keys — **the repo does not ship credentials**:
-
-| Key | Required | Used for |
-|-----|----------|----------|
-| `AZURE_OPENAI_KEY` | **Yes** | Roadmap generation, AI feedback, question generation |
-| `OPENAI_API_KEY` | **Yes** | Whisper audio transcription (live practice feature) |
-| `MS_CLIENT_ID` / `MS_CLIENT_SECRET` | Optional | Microsoft Calendar sync |
-
-Without both required keys the backend will start but API calls will return 500 errors.
+The `.env` file already contains working Azure OpenAI credentials. You only need to add extras for optional features (see [Configuration](#configuration) below).
 
 ### Step 2 — Start the backend
 
@@ -145,14 +137,11 @@ Vite automatically proxies `/api/*` and `/auth/*` to the backend — no CORS set
 Copy `.env.example` to `.env` and fill in values as needed:
 
 ```env
-# REQUIRED — Azure OpenAI (powers roadmap, feedback, questions)
-AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com
-AZURE_OPENAI_KEY=<your-azure-openai-key>
-AZURE_OPENAI_MODEL=<your-deployment-name>
+# Already set — Azure OpenAI (powers roadmap, feedback, questions)
+AZURE_OPENAI_ENDPOINT=https://app-uoaihack6zs3w.azurewebsites.net
+AZURE_OPENAI_KEY=your-key
+AZURE_OPENAI_MODEL=gpt-5.4
 AZURE_OPENAI_VERSION=2024-12-01-preview
-
-# REQUIRED — OpenAI (Whisper transcription for live practice)
-OPENAI_API_KEY=<your-openai-api-key>
 
 # Optional — change for production
 SECRET_KEY=change-me-in-production
