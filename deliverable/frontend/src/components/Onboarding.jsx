@@ -43,7 +43,7 @@ export default function Onboarding({ theme, mono, setPage, setRoadmapData }) {
       setTimeout(() => setPage('roadmap'), 600);
     } catch (err) {
       stepTimers.forEach(clearTimeout);
-      setLoadError(`Could not reach the API: ${err.message}. Check that main.py is running on port 8000.`);
+      setLoadError(`Could not reach the API: ${err.message}. Make sure main.py is running on port 8000 and that your backend/.env file contains AZURE_OPENAI_KEY and OPENAI_API_KEY (required for Whisper transcription).`);
       setLoading(false);
       setLoadStep(0);
     }
@@ -72,7 +72,7 @@ export default function Onboarding({ theme, mono, setPage, setRoadmapData }) {
             </div>
           ))}
         </div>
-        <p className="mono" style={{ color: theme.inkFaint, marginTop: 32, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Analysing with AI — hang tight</p>
+        <p className="mono" style={{ color: theme.inkFaint, marginTop: 32, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Analysing with AI, hang tight</p>
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function Onboarding({ theme, mono, setPage, setRoadmapData }) {
         <div style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <FileText size={18} />
-            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>01 — Your CV</span>
+            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>01. Your CV</span>
           </div>
           <label style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
@@ -127,7 +127,7 @@ export default function Onboarding({ theme, mono, setPage, setRoadmapData }) {
         <div style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <Briefcase size={18} />
-            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>02 — Job Description</span>
+            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>02. Job Description</span>
           </div>
           <textarea
             value={jdText}
@@ -147,7 +147,7 @@ export default function Onboarding({ theme, mono, setPage, setRoadmapData }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <CalIcon size={18} />
           <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            03 — Interview date <span style={{ color: theme.inkFaint }}>(optional)</span>
+            03. Interview date <span style={{ color: theme.inkFaint }}>(optional)</span>
           </span>
         </div>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{

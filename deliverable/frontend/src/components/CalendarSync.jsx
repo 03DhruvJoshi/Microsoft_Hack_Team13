@@ -87,7 +87,7 @@ export default function CalendarSync({ theme, mono, setPage, roadmapData }) {
         ics += 'BEGIN:VEVENT\r\n';
         ics += `UID:preppath-${count}-${now.getTime()}@preppath.app\r\n`;
         ics += `DTSTAMP:${fmt(now)}\r\nDTSTART:${fmt(start)}\r\nDTEND:${fmt(end)}\r\n`;
-        ics += `SUMMARY:PrepPath — ${titles[count]}\r\n`;
+        ics += `SUMMARY:PrepPath: ${titles[count]}\r\n`;
         ics += 'BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:PrepPath session in 1 hour\r\nTRIGGER:-PT1H\r\nEND:VALARM\r\n';
         ics += 'END:VEVENT\r\n';
         count++;
@@ -113,7 +113,7 @@ export default function CalendarSync({ theme, mono, setPage, roadmapData }) {
   };
 
   const syncToMicrosoft = async () => {
-    if (!roadmapData) { setMsError('No roadmap data — complete onboarding first.'); return; }
+    if (!roadmapData) { setMsError('No roadmap data. Complete onboarding first.'); return; }
     setMsSyncing(true); setMsError('');
     try {
       const res = await fetch(`${API_BASE}/api/microsoft/sync`, {
@@ -146,7 +146,7 @@ export default function CalendarSync({ theme, mono, setPage, roadmapData }) {
           Bring it <em>into your week</em>.
         </h1>
         <p style={{ fontSize: 17, color: theme.inkSoft, marginTop: 16, maxWidth: 540 }}>
-          Export your personalised prep sessions — built from your actual roadmap — to any calendar.
+          Export your personalised prep sessions, built from your actual roadmap, to any calendar.
         </p>
       </div>
 
@@ -262,7 +262,7 @@ export default function CalendarSync({ theme, mono, setPage, roadmapData }) {
         <div style={{ padding: 24, background: `${theme.success}15`, borderLeft: `3px solid ${theme.success}` }} className="fade-up">
           <div className="serif" style={{ fontSize: 22, fontWeight: 500, marginBottom: 8 }}>Downloaded.</div>
           <p style={{ margin: 0, color: theme.inkSoft, fontSize: 14, lineHeight: 1.6 }}>
-            Open <span className="mono" style={{ fontSize: 13, background: theme.surfaceAlt, padding: '2px 8px' }}>preppath_schedule.ics</span> to import all sessions — with 1-hour reminders.
+            Open <span className="mono" style={{ fontSize: 13, background: theme.surfaceAlt, padding: '2px 8px' }}>preppath_schedule.ics</span> to import all sessions, with 1-hour reminders.
           </p>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: theme.inkFaint, marginTop: 16 }}>
             Works with → Apple Calendar · Google Calendar · Outlook · Fantastical

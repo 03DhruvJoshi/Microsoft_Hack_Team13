@@ -20,7 +20,7 @@ export default function Landing({ theme, mono, setPage }) {
             <span style={{ fontStyle: 'italic', color: theme.inkFaint }}>Your plan.</span>
           </h1>
           <p style={{ fontSize: 19, color: theme.inkSoft, maxWidth: 560, marginTop: 32, lineHeight: 1.5 }}>
-            AI-powered interview prep that adapts to your schedule, your needs, and your goals. Designed with — not for — neurodivergent students.
+            AI-powered interview prep that adapts to your schedule, your needs, and your goals. Designed with, not for, neurodivergent students.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
             <button onClick={() => setPage('onboarding')} style={{

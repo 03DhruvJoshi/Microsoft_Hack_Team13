@@ -310,7 +310,7 @@ function Landing({ theme, mono, setPage }) {
             <span style={{ fontStyle: 'italic', color: theme.inkFaint }}>Your plan.</span>
           </h1>
           <p style={{ fontSize: 19, color: theme.inkSoft, maxWidth: 560, marginTop: 32, lineHeight: 1.5 }}>
-            AI-powered interview prep that adapts to your schedule, your needs, and your goals. Designed with — not for — neurodivergent students.
+            AI-powered interview prep that adapts to your schedule, your needs, and your goals. Designed with, not for, neurodivergent students.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
             <button onClick={() => setPage('onboarding')} style={{
@@ -403,7 +403,7 @@ function Onboarding({ theme, mono, setPage, setRoadmapData }) {
       setTimeout(() => setPage('roadmap'), 600);
     } catch (err) {
       stepTimers.forEach(clearTimeout);
-      setLoadError(`Could not reach the API: ${err.message}. Check that main.py is running on port 8000.`);
+      setLoadError(`Could not reach the API: ${err.message}. Make sure main.py is running on port 8000 and that your backend/.env file contains AZURE_OPENAI_KEY and OPENAI_API_KEY (required for Whisper transcription).`);
       setLoading(false);
       setLoadStep(0);
     }
@@ -432,7 +432,7 @@ function Onboarding({ theme, mono, setPage, setRoadmapData }) {
             </div>
           ))}
         </div>
-            <p className="mono" style={{ color: theme.inkFaint, marginTop: 32, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Analysing with AI — hang tight</p>
+            <p className="mono" style={{ color: theme.inkFaint, marginTop: 32, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Analysing with AI, hang tight</p>
       </div>
     );
   }
@@ -459,7 +459,7 @@ function Onboarding({ theme, mono, setPage, setRoadmapData }) {
         <div style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <FileText size={18} />
-            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>01 — Your CV</span>
+            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>01. Your CV</span>
           </div>
           <label style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
@@ -491,7 +491,7 @@ function Onboarding({ theme, mono, setPage, setRoadmapData }) {
         <div style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <Briefcase size={18} />
-            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>02 — Job Description</span>
+            <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>02. Job Description</span>
           </div>
           <textarea
             value={jdText}
@@ -510,7 +510,7 @@ function Onboarding({ theme, mono, setPage, setRoadmapData }) {
       <div style={{ background: theme.surface, border: `1px solid ${theme.rule}`, padding: 28, marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <CalIcon size={18} />
-          <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>03 — Interview date <span style={{ color: theme.inkFaint }}>(optional)</span></span>
+          <span className="mono" style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' }}>03. Interview date <span style={{ color: theme.inkFaint }}>(optional)</span></span>
         </div>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
           padding: 12, border: `1px solid ${theme.rule}`,
@@ -893,7 +893,7 @@ function CalendarSync({ theme, mono, setPage }) {
         ics += `DTSTAMP:${formatDate(now)}\r\n`;
         ics += `DTSTART:${formatDate(start)}\r\n`;
         ics += `DTEND:${formatDate(end)}\r\n`;
-        ics += `SUMMARY:PrepPath — ${title}\r\n`;
+        ics += `SUMMARY:PrepPath: ${title}\r\n`;
         ics += `DESCRIPTION:Interview prep session for your Spotify Product Manager interview.\\n\\nFocus: ${title}\\n\\nOpen PrepPath when ready to begin.\r\n`;
         ics += 'BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:PrepPath session starting in 1 hour\r\nTRIGGER:-PT1H\r\nEND:VALARM\r\n';
         ics += 'END:VEVENT\r\n';
@@ -926,7 +926,7 @@ function CalendarSync({ theme, mono, setPage }) {
           Bring it <em>into your week</em>.
         </h1>
         <p style={{ fontSize: 17, color: theme.inkSoft, marginTop: 16, maxWidth: 540 }}>
-          Export your prep sessions as a calendar file. Drop it into Apple Calendar, Google Calendar, Outlook — anything that opens .ics.
+          Export your prep sessions as a calendar file. Drop it into Apple Calendar, Google Calendar, Outlook, or anything that opens .ics.
         </p>
       </div>
 
@@ -1015,7 +1015,7 @@ function CalendarSync({ theme, mono, setPage }) {
         <div style={{ marginTop: 20, padding: 24, background: `${theme.success}15`, borderLeft: `3px solid ${theme.success}` }} className="fade-up">
           <div className="serif" style={{ fontSize: 22, fontWeight: 500, marginBottom: 8 }}>Downloaded.</div>
           <p style={{ margin: 0, color: theme.inkSoft, fontSize: 14, lineHeight: 1.6 }}>
-            Open <span className="mono" style={{ fontSize: 13, background: theme.surfaceAlt, padding: '2px 8px' }}>preppath-sessions.ics</span> on your device. Your calendar app will offer to import all sessions — including a 1-hour reminder before each one.
+            Open <span className="mono" style={{ fontSize: 13, background: theme.surfaceAlt, padding: '2px 8px' }}>preppath-sessions.ics</span> on your device. Your calendar app will offer to import all sessions, including a 1-hour reminder before each one.
           </p>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: theme.inkFaint, marginTop: 16 }}>
             Works with → Apple Calendar · Google Calendar · Outlook · Fantastical
@@ -1289,7 +1289,7 @@ function Feedback({ theme, mono, setPage, roadmapData, currentQIdx, transcript, 
           <div className="serif" style={{ padding: 20, background: theme.surface, border: `1px solid ${theme.rule}`, borderTop: 'none', fontSize: 16, lineHeight: 1.7, fontStyle: 'italic' }}>
             {transcript
               ? `"${transcript}"`
-              : <span style={{ color: theme.inkFaint, fontStyle: 'normal', fontSize: 14 }}>No transcript — go to Practice and type your answer.</span>
+              : <span style={{ color: theme.inkFaint, fontStyle: 'normal', fontSize: 14 }}>No transcript. Go to Practice and type your answer.</span>
             }
           </div>
         )}
@@ -1306,7 +1306,7 @@ function Feedback({ theme, mono, setPage, roadmapData, currentQIdx, transcript, 
 
         {apiError && (
           <div style={{ padding: '14px 18px', background: `${theme.error}15`, borderLeft: `3px solid ${theme.error}`, color: theme.error, fontSize: 14, marginBottom: 24 }}>
-            {apiError} — showing demo feedback below.
+            {apiError}. Showing demo feedback below.
           </div>
         )}
 
